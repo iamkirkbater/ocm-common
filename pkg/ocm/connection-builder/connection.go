@@ -20,9 +20,8 @@ import (
 	sdk "github.com/openshift-online/ocm-sdk-go"
 	"github.com/openshift-online/ocm-sdk-go/logging"
 
-	"github.com/openshift-online/ocm-common/pkg/ocm/config"
 	"github.com/openshift-online/ocm-cli/pkg/debug"
-	"github.com/openshift-online/ocm-cli/pkg/info"
+	"github.com/openshift-online/ocm-common/pkg/ocm/config"
 )
 
 // ConnectionBuilder contains the information and logic needed to build a connection to OCM. Don't
@@ -106,7 +105,12 @@ func (b *ConnectionBuilder) Build() (result *sdk.Connection, err error) {
 	}
 	builder.Logger(logger)
 
-	agent := b.getAgent()
+	agent, err := b.getAgent()
+	if err != nil {
+		// Explicitly error out here if the Agent is unset. Consumers should
+		// always set their own unique agent name explicitly.
+		return nil, fmt.Errorf("Unable to build OCM Connection - Agent Unset: %w", err)
+	}
 	builder.Agent(agent)
 
 	if b.apiUrlOverride != "" {
@@ -172,9 +176,9 @@ func (b *ConnectionBuilder) getLogger() (logging.Logger, error) {
 }
 
 // Returns the configured agent or a default value if there is none configured
-func (b *ConnectionBuilder) getAgent() string {
+func (b *ConnectionBuilder) getAgent() (string, error) {
 	if b.agent != "" {
-		return b.agent
+		return b.agent, nil
 	}
-	return "OCM-CLI/" + info.Version
+	return "", fmt.Errorf("Define an Agent for the OCM Connection")
 }
